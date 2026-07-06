@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: decision
+    description: Leadership simulation decision processing
 paths:
   /healthz:
     get:
@@ -24,6 +26,31 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /decision:
+    post:
+      operationId: processDecision
+      tags: [decision]
+      summary: Process a leadership decision
+      description: Sends current game state and player choice to AI for dynamic scenario generation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DecisionRequest"
+      responses:
+        "200":
+          description: AI-generated scenario result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DecisionResult"
+        "500":
+          description: AI processing error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 components:
   schemas:
     HealthStatus:
@@ -33,4 +60,71 @@ components:
           type: string
       required:
         - status
-
+    DecisionRequest:
+      type: object
+      properties:
+        choice:
+          type: string
+          enum: [A, B]
+        choiceText:
+          type: string
+        scenarioText:
+          type: string
+        stats:
+          type: object
+          properties:
+            perimeter:
+              type: number
+            morale:
+              type: number
+            resources:
+              type: number
+          required:
+            - perimeter
+            - morale
+            - resources
+        decisionCount:
+          type: number
+      required:
+        - choice
+        - choiceText
+        - scenarioText
+        - stats
+        - decisionCount
+    DecisionResult:
+      type: object
+      properties:
+        statDeltas:
+          type: object
+          properties:
+            perimeter:
+              type: number
+            morale:
+              type: number
+            resources:
+              type: number
+          required:
+            - perimeter
+            - morale
+            - resources
+        nextScenario:
+          type: string
+        optionA:
+          type: string
+        optionB:
+          type: string
+        analysis:
+          type: string
+      required:
+        - statDeltas
+        - nextScenario
+        - optionA
+        - optionB
+        - analysis
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
