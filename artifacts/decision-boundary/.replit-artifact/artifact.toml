@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "決策邊界：領導力推演沙盤"
+version = "1.0.0"
+id = "artifacts/decision-boundary"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 22969
+
+[services.development]
+run = "pnpm --filter @workspace/decision-boundary run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/decision-boundary", "run", "build" ]
+publicDir = "artifacts/decision-boundary/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "22969"
+BASE_PATH = "/"
