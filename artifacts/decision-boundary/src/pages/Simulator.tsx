@@ -486,7 +486,6 @@ export default function Simulator() {
           </div>
         </div>
       </header>
-
       {/* Title strip */}
       <div className="py-2 px-6 border-b flex items-center gap-4" style={{ borderColor: "hsl(195 100% 45% / 0.15)", backgroundColor: "hsl(195 100% 45% / 0.03)" }}>
         <div className="font-mono text-xs text-muted-foreground tracking-widest uppercase">CLASSIFIED</div>
@@ -495,7 +494,6 @@ export default function Simulator() {
         <div className="flex-1 h-px bg-border/40" />
         <div className="font-mono text-xs text-muted-foreground tracking-widest uppercase">CLASSIFIED</div>
       </div>
-
       {/* Main content */}
       <div className="flex-1 flex overflow-hidden">
         {/* LEFT */}
@@ -557,21 +555,19 @@ export default function Simulator() {
         <main className="flex-1 flex flex-col overflow-hidden">
           {gameOver ? (
             /* ─── GAME OVER: Evaluation ─── */
-            evaluating ? (
-              <div className="flex-1 flex flex-col items-center justify-center gap-5 p-6">
-                <div className="flex gap-1.5">
-                  {[0, 1, 2].map(i => (
-                    <div key={i} className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: "hsl(195 100% 45%)", animation: `pulse-dot 1.2s ease-in-out ${i * 0.2}s infinite` }} />
-                  ))}
-                </div>
-                <p className="font-mono text-base tracking-wider text-center typewriter-cursor" style={{ color: "hsl(195 100% 45%)" }}>
-                  正在生成領導力綜合評估報告...
-                </p>
-                <p className="font-mono text-xs text-muted-foreground/50 text-center">
-                  AI 導師正結合《君王論》與策略管理框架分析你的決策模式
-                </p>
+            (evaluating ? (<div className="flex-1 flex flex-col items-center justify-center gap-5 p-6">
+              <div className="flex gap-1.5">
+                {[0, 1, 2].map(i => (
+                  <div key={i} className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: "hsl(195 100% 45%)", animation: `pulse-dot 1.2s ease-in-out ${i * 0.2}s infinite` }} />
+                ))}
               </div>
-            ) : evalError ? (
+              <p className="font-mono text-base tracking-wider text-center typewriter-cursor" style={{ color: "hsl(195 100% 45%)" }}>
+                正在生成領導力綜合評估報告...
+              </p>
+              <p className="font-mono text-xs text-muted-foreground/50 text-center">
+                AI 導師正結合《君王論》與策略管理框架分析你的決策模式
+              </p>
+            </div>) : evalError ? (
               <div className="flex-1 flex flex-col items-center justify-center gap-4 p-6">
                 <div className="font-mono text-xs px-3 py-1 rounded border tracking-widest" style={{ borderColor: "hsl(0 80% 55% / 0.4)", color: "hsl(0 80% 55%)", backgroundColor: "hsl(0 80% 55% / 0.06)" }}>
                   EVALUATION ERROR
@@ -593,10 +589,10 @@ export default function Simulator() {
                 rounds={decisionCount}
                 onRestart={restart}
               />
-            ) : null
+            ) : null)
           ) : (
             /* ─── ACTIVE GAME ─── */
-            <>
+            (<>
               <div className="flex-1 p-6 flex flex-col gap-4 overflow-hidden">
                 <div className="flex items-center gap-3">
                   <div className="w-1 h-4 rounded-full" style={{ backgroundColor: "hsl(195 100% 45%)" }} />
@@ -625,7 +621,7 @@ export default function Simulator() {
                   <div className="absolute inset-0 scanlines opacity-20 pointer-events-none rounded-xl" />
 
                   {aiError ? (
-                    <div className="flex-1 flex flex-col items-center justify-center gap-4">
+                    <div className="flex-1 flex flex-col items-center justify-center gap-4 border-t-[color:var(--color-gray-50)] border-r-[color:var(--color-gray-50)] border-b-[color:var(--color-gray-50)] border-l-[color:var(--color-gray-50)]">
                       <div className="font-mono text-xs px-3 py-1 rounded border tracking-widest" style={{ borderColor: "hsl(0 80% 55% / 0.4)", color: "hsl(0 80% 55%)", backgroundColor: "hsl(0 80% 55% / 0.06)" }}>
                         SYSTEM ERROR
                       </div>
@@ -672,7 +668,6 @@ export default function Simulator() {
                   )}
                 </div>
               </div>
-
               {/* Decision buttons */}
               <div className="border-t p-6" style={{ borderColor: "hsl(195 100% 45% / 0.12)" }}>
                 <div className="flex items-center gap-3 mb-4">
@@ -704,7 +699,7 @@ export default function Simulator() {
                   <div className="font-mono text-xs text-muted-foreground/30 tracking-widest">SIMULATION ENGINE · BUILD 2041</div>
                 </div>
               </div>
-            </>
+            </>)
           )}
         </main>
       </div>
