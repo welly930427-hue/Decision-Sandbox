@@ -18,8 +18,8 @@ export const DecisionRequestChoice = {
 } as const;
 
 export type DecisionRequestStats = {
-  perimeter: number;
-  morale: number;
+  influence: number;
+  trust: number;
   resources: number;
 };
 
@@ -35,8 +35,8 @@ export interface DecisionRequest {
 }
 
 export type DecisionResultStatDeltas = {
-  perimeter: number;
-  morale: number;
+  influence: number;
+  trust: number;
   resources: number;
 };
 
@@ -49,8 +49,8 @@ export interface DecisionResult {
 }
 
 export type HistoryEntryDeltas = {
-  perimeter: number;
-  morale: number;
+  influence: number;
+  trust: number;
   resources: number;
 };
 
@@ -63,8 +63,8 @@ export interface HistoryEntry {
 }
 
 export type EvaluateRequestStats = {
-  perimeter: number;
-  morale: number;
+  influence: number;
+  trust: number;
   resources: number;
 };
 

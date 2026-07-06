@@ -3,6 +3,12 @@ import { openai } from "@workspace/integrations-openai-ai-server";
 
 const router = Router();
 
+const DIMENSION_GUIDE = `THREE CORE DIMENSIONS — every scenario, option, analysis and report MUST revolve around exactly these three dimensions:
+- "influence" = 組織影響力 (Influence): the player's organizational leverage, authority, credibility and ability to drive outcomes across the organization.
+- "trust" = 信任感 (Trust): the trust and psychological safety the player holds with team members, peers, superiors and stakeholders.
+- "resources" = 專案資源 (Resources): budget, headcount, time and material resources available to execute.
+When writing Traditional Chinese scenarios, options, analysis and the final report, refer to these dimensions as 組織影響力、信任感、專案資源. Design every dilemma so choices create meaningful trade-offs among these three dimensions.`;
+
 const LEVEL_GUIDE = `SCENARIO DESIGN BY SENIORITY LEVEL — you MUST tailor every scenario to the player's role and seniority:
 - 高階 (Executive: CEO/CFO/CSO/CAE/etc.): Design boardroom-level conflicts — capital allocation, budget cuts, cross-department power struggles, board & shareholder pressure, M&A risk, organizational politics, long-term strategy vs short-term earnings. A CFO faces budget-cut mandates and cross-department interest conflicts; a CEO faces board battles and strategic bets; a CSO faces ESG vs profitability tension; a CAE faces independence vs management-pressure dilemmas.
 - 中階 (Middle management: HR Director/Product Manager/etc.): Design cross-functional coordination crises — resource contention between teams, the dual pressure of managing up and leading down, conflicting directives, project delivery deadlines, talent retention, stakeholder alignment.
@@ -11,6 +17,8 @@ const LEVEL_GUIDE = `SCENARIO DESIGN BY SENIORITY LEVEL — you MUST tailor ever
 Always keep the scenario tone appropriate to the seniority. A frontline specialist should NOT be deciding company M&A; a CEO should NOT be worrying about personal overtime hours.`;
 
 const START_SYSTEM_PROMPT = `You are a senior organizational strategy and leadership coach specializing in team psychology, organizational politics, and crisis management, running an interactive leadership simulation sandbox.
+
+${DIMENSION_GUIDE}
 
 ${LEVEL_GUIDE}
 
@@ -26,21 +34,25 @@ Example output format:
 
 const DECISION_SYSTEM_PROMPT = `You are a senior organizational strategy and leadership coach specializing in team psychology, organizational politics, and crisis management, running an interactive leadership simulation sandbox. The player is making decisions in complex organizational situations.
 
+${DIMENSION_GUIDE}
+
 ${LEVEL_GUIDE}
 
 CRITICAL INSTRUCTION: You MUST respond with ONLY a valid JSON object. No markdown, no code fences, no explanations, no extra text. Start your response with { and end with }.
 
 When the player makes a decision, output a JSON object with exactly these fields:
-- "statDeltas": object with "perimeter", "morale", "resources" — each an integer from -15 to +15, logically derived from the decision (must not all be positive or all negative)
+- "statDeltas": object with "influence", "trust", "resources" — each an integer from -15 to +15, logically derived from the decision (must not all be positive or all negative)
 - "nextScenario": string (Traditional Chinese, 80-120 characters) — next leadership crisis tailored to the role's seniority level, combining team psychology and strategic conflict, directly stemming from the player's decision
 - "optionA": string (Traditional Chinese, 25-40 characters) — next scenario option A with a clear strategic orientation (e.g. authoritative/short-term/centralized), MUST start with "A｜"
 - "optionB": string (Traditional Chinese, 25-40 characters) — next scenario option B with opposite orientation (e.g. collaborative/long-term/decentralized), MUST start with "B｜"
 - "analysis": string (Traditional Chinese, 30-50 characters) — one precise strategic assessment of the player's decision impact
 
 Example output format:
-{"statDeltas":{"perimeter":5,"morale":-8,"resources":3},"nextScenario":"...","optionA":"A｜...","optionB":"B｜...","analysis":"..."}`;
+{"statDeltas":{"influence":5,"trust":-8,"resources":3},"nextScenario":"...","optionA":"A｜...","optionB":"B｜...","analysis":"..."}`;
 
 const EVALUATE_SYSTEM_PROMPT = `You are a top leadership assessment consultant combining Machiavelli's "The Prince" with modern strategic management theory.
+
+${DIMENSION_GUIDE}
 
 CRITICAL INSTRUCTION: You MUST respond with ONLY a valid JSON object. No markdown, no code fences, no explanations, no extra text. Start your response with { and end with }.
 
@@ -138,14 +150,14 @@ router.post("/decision", async (req, res) => {
     choice: "A" | "B";
     choiceText: string;
     scenarioText: string;
-    stats: { perimeter: number; morale: number; resources: number };
+    stats: { influence: number; trust: number; resources: number };
     decisionCount: number;
     roleName: string;
     roleEn: string;
     roleLevel: string;
   };
 
-  const userMessage = `The player's role is: ${roleName} (${roleEn}), seniority level: ${roleLevel}. Current stats — Perimeter: ${stats.perimeter}%, Morale: ${stats.morale}%, Resources: ${stats.resources}%. Round ${decisionCount + 1}. Scenario: ${scenarioText}. Player chose option ${choice}: ${choiceText}. Respond with JSON only.`;
+  const userMessage = `The player's role is: ${roleName} (${roleEn}), seniority level: ${roleLevel}. Current stats — Influence: ${stats.influence}%, Trust: ${stats.trust}%, Resources: ${stats.resources}%. Round ${decisionCount + 1}. Scenario: ${scenarioText}. Player chose option ${choice}: ${choiceText}. Respond with JSON only.`;
 
   try {
     const completion = await openai.chat.completions.create({
@@ -174,7 +186,7 @@ router.post("/decision", async (req, res) => {
     }
 
     let parsed: {
-      statDeltas: { perimeter: number; morale: number; resources: number };
+      statDeltas: { influence: number; trust: number; resources: number };
       nextScenario: string;
       optionA: string;
       optionB: string;
@@ -191,8 +203,8 @@ router.post("/decision", async (req, res) => {
     }
 
     const clampDelta = (n: unknown) => Math.max(-15, Math.min(15, Math.round(Number(n) || 0)));
-    parsed.statDeltas.perimeter = clampDelta(parsed.statDeltas.perimeter);
-    parsed.statDeltas.morale = clampDelta(parsed.statDeltas.morale);
+    parsed.statDeltas.influence = clampDelta(parsed.statDeltas.influence);
+    parsed.statDeltas.trust = clampDelta(parsed.statDeltas.trust);
     parsed.statDeltas.resources = clampDelta(parsed.statDeltas.resources);
 
     res.json(parsed);
@@ -205,8 +217,8 @@ router.post("/decision", async (req, res) => {
 
 router.post("/evaluate", async (req, res) => {
   const { stats, history, rounds, endReason, roleName, roleEn, roleLevel } = req.body as {
-    stats: { perimeter: number; morale: number; resources: number };
-    history: Array<{ round: number; scenarioText: string; choice: string; choiceText: string; deltas: { perimeter: number; morale: number; resources: number } }>;
+    stats: { influence: number; trust: number; resources: number };
+    history: Array<{ round: number; scenarioText: string; choice: string; choiceText: string; deltas: { influence: number; trust: number; resources: number } }>;
     rounds: number;
     endReason: "max_rounds" | "stat_zero";
     roleName: string;
@@ -215,14 +227,14 @@ router.post("/evaluate", async (req, res) => {
   };
 
   const historyText = history
-    .map(h => `Round ${h.round}: Chose ${h.choice} (${h.choiceText.slice(0, 40)}) → Perimeter${h.deltas.perimeter >= 0 ? "+" : ""}${h.deltas.perimeter} Morale${h.deltas.morale >= 0 ? "+" : ""}${h.deltas.morale} Resources${h.deltas.resources >= 0 ? "+" : ""}${h.deltas.resources}`)
+    .map(h => `Round ${h.round}: Chose ${h.choice} (${h.choiceText.slice(0, 40)}) → Influence${h.deltas.influence >= 0 ? "+" : ""}${h.deltas.influence} Trust${h.deltas.trust >= 0 ? "+" : ""}${h.deltas.trust} Resources${h.deltas.resources >= 0 ? "+" : ""}${h.deltas.resources}`)
     .join("\n");
 
   const endReasonText = endReason === "stat_zero"
     ? "terminated early due to a stat hitting zero"
     : `completed all ${rounds} rounds`;
 
-  const userMessage = `The player's role is: ${roleName} (${roleEn}), seniority level: ${roleLevel}. Player ${endReasonText}. Final stats: Perimeter ${stats.perimeter}%, Morale ${stats.morale}%, Resources ${stats.resources}%. Decision history:\n${historyText}\nRespond with JSON only.`;
+  const userMessage = `The player's role is: ${roleName} (${roleEn}), seniority level: ${roleLevel}. Player ${endReasonText}. Final stats: Influence ${stats.influence}%, Trust ${stats.trust}%, Resources ${stats.resources}%. Decision history:\n${historyText}\nRespond with JSON only.`;
 
   try {
     const completion = await openai.chat.completions.create({

@@ -43,8 +43,8 @@ export const ProcessDecisionBody = zod.object({
   "choiceText": zod.string(),
   "scenarioText": zod.string(),
   "stats": zod.object({
-  "perimeter": zod.number(),
-  "morale": zod.number(),
+  "influence": zod.number(),
+  "trust": zod.number(),
   "resources": zod.number()
 }),
   "decisionCount": zod.number(),
@@ -55,8 +55,8 @@ export const ProcessDecisionBody = zod.object({
 
 export const ProcessDecisionResponse = zod.object({
   "statDeltas": zod.object({
-  "perimeter": zod.number(),
-  "morale": zod.number(),
+  "influence": zod.number(),
+  "trust": zod.number(),
   "resources": zod.number()
 }),
   "nextScenario": zod.string(),
@@ -72,8 +72,8 @@ export const ProcessDecisionResponse = zod.object({
  */
 export const EvaluateSimulationBody = zod.object({
   "stats": zod.object({
-  "perimeter": zod.number(),
-  "morale": zod.number(),
+  "influence": zod.number(),
+  "trust": zod.number(),
   "resources": zod.number()
 }),
   "history": zod.array(zod.object({
@@ -82,8 +82,8 @@ export const EvaluateSimulationBody = zod.object({
   "choice": zod.string(),
   "choiceText": zod.string(),
   "deltas": zod.object({
-  "perimeter": zod.number(),
-  "morale": zod.number(),
+  "influence": zod.number(),
+  "trust": zod.number(),
   "resources": zod.number()
 })
 })),

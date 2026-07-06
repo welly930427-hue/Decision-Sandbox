@@ -7,7 +7,7 @@
  */
 
 export type DecisionRequestStats = {
-  perimeter: number;
-  morale: number;
+  influence: number;
+  trust: number;
   resources: number;
 };

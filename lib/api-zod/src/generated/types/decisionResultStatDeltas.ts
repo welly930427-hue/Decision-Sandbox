@@ -7,7 +7,7 @@
  */
 
 export type DecisionResultStatDeltas = {
-  perimeter: number;
-  morale: number;
+  influence: number;
+  trust: number;
   resources: number;
 };

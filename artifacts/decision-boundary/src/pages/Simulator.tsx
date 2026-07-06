@@ -47,7 +47,7 @@ interface HistoryEntry {
   scenarioText: string;
   choice: string;
   choiceText: string;
-  deltas: { perimeter: number; morale: number; resources: number };
+  deltas: { influence: number; trust: number; resources: number };
 }
 
 interface EvaluateResult {
@@ -281,8 +281,8 @@ function EvaluationReport({
 
 export default function Simulator() {
   const [stats, setStats] = useState<Stat[]>([
-    { label: "權力邊界", labelEn: "Perimeter", value: 50, icon: "◈" },
-    { label: "團隊士氣", labelEn: "Morale", value: 50, icon: "◉" },
+    { label: "組織影響力", labelEn: "Influence", value: 50, icon: "◈" },
+    { label: "信任感", labelEn: "Trust", value: 50, icon: "◉" },
     { label: "專案資源", labelEn: "Resources", value: 50, icon: "◆" },
   ]);
   const [deltas, setDeltas] = useState<(number | null)[]>([null, null, null]);
@@ -316,8 +316,8 @@ export default function Simulator() {
 
   function restart() {
     setStats([
-      { label: "權力邊界", labelEn: "Perimeter", value: 50, icon: "◈" },
-      { label: "團隊士氣", labelEn: "Morale", value: 50, icon: "◉" },
+      { label: "組織影響力", labelEn: "Influence", value: 50, icon: "◈" },
+      { label: "信任感", labelEn: "Trust", value: 50, icon: "◉" },
       { label: "專案資源", labelEn: "Resources", value: 50, icon: "◆" },
     ]);
     setDeltas([null, null, null]);
@@ -387,8 +387,8 @@ export default function Simulator() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           stats: {
-            perimeter: finalStats[0].value,
-            morale: finalStats[1].value,
+            influence: finalStats[0].value,
+            trust: finalStats[1].value,
             resources: finalStats[2].value,
           },
           history: finalHistory,
@@ -429,8 +429,8 @@ export default function Simulator() {
     setTransitionMsg(TRANSITION_MSGS[Math.floor(Math.random() * TRANSITION_MSGS.length)]);
 
     const currentStats = {
-      perimeter: stats[0].value,
-      morale: stats[1].value,
+      influence: stats[0].value,
+      trust: stats[1].value,
       resources: stats[2].value,
     };
 
@@ -456,14 +456,14 @@ export default function Simulator() {
       }
 
       const data = await res.json() as {
-        statDeltas: { perimeter: number; morale: number; resources: number };
+        statDeltas: { influence: number; trust: number; resources: number };
         nextScenario: string;
         optionA: string;
         optionB: string;
         analysis: string;
       };
 
-      const newDeltas = [data.statDeltas.perimeter, data.statDeltas.morale, data.statDeltas.resources];
+      const newDeltas = [data.statDeltas.influence, data.statDeltas.trust, data.statDeltas.resources];
 
       const newStats = stats.map((s, i) => ({ ...s, value: clamp(s.value + newDeltas[i]) }));
 
@@ -478,7 +478,7 @@ export default function Simulator() {
         scenarioText: scenario.text,
         choice,
         choiceText,
-        deltas: { perimeter: newDeltas[0], morale: newDeltas[1], resources: newDeltas[2] },
+        deltas: { influence: newDeltas[0], trust: newDeltas[1], resources: newDeltas[2] },
       };
       const newHistory = [...history, newEntry];
       setHistory(newHistory);
@@ -487,7 +487,7 @@ export default function Simulator() {
       setLog(prev => [
         ...prev,
         `[${timestamp}] 輪次 ${newCount} — 選擇${choice}：${choiceText.slice(0, 20)}...`,
-        `         ↳ 邊界 ${newDeltas[0] >= 0 ? "+" : ""}${newDeltas[0]}  |  士氣 ${newDeltas[1] >= 0 ? "+" : ""}${newDeltas[1]}  |  資源 ${newDeltas[2] >= 0 ? "+" : ""}${newDeltas[2]}`,
+        `         ↳ 影響力 ${newDeltas[0] >= 0 ? "+" : ""}${newDeltas[0]}  |  信任 ${newDeltas[1] >= 0 ? "+" : ""}${newDeltas[1]}  |  資源 ${newDeltas[2] >= 0 ? "+" : ""}${newDeltas[2]}`,
       ]);
 
       // Check end conditions

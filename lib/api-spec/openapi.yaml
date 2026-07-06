@@ -123,15 +123,15 @@ components:
         stats:
           type: object
           properties:
-            perimeter:
+            influence:
               type: number
-            morale:
+            trust:
               type: number
             resources:
               type: number
           required:
-            - perimeter
-            - morale
+            - influence
+            - trust
             - resources
         decisionCount:
           type: number
@@ -156,15 +156,15 @@ components:
         statDeltas:
           type: object
           properties:
-            perimeter:
+            influence:
               type: number
-            morale:
+            trust:
               type: number
             resources:
               type: number
           required:
-            - perimeter
-            - morale
+            - influence
+            - trust
             - resources
         nextScenario:
           type: string
@@ -194,13 +194,13 @@ components:
         deltas:
           type: object
           properties:
-            perimeter:
+            influence:
               type: number
-            morale:
+            trust:
               type: number
             resources:
               type: number
-          required: [perimeter, morale, resources]
+          required: [influence, trust, resources]
       required: [round, scenarioText, choice, choiceText, deltas]
     EvaluateRequest:
       type: object
@@ -208,13 +208,13 @@ components:
         stats:
           type: object
           properties:
-            perimeter:
+            influence:
               type: number
-            morale:
+            trust:
               type: number
             resources:
               type: number
-          required: [perimeter, morale, resources]
+          required: [influence, trust, resources]
         history:
           type: array
           items:

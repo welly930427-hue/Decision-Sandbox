@@ -7,7 +7,7 @@
  */
 
 export type HistoryEntryDeltas = {
-  perimeter: number;
-  morale: number;
+  influence: number;
+  trust: number;
   resources: number;
 };
