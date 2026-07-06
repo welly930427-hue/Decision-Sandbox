@@ -121,6 +121,73 @@ components:
         - optionA
         - optionB
         - analysis
+    HistoryEntry:
+      type: object
+      properties:
+        round:
+          type: number
+        scenarioText:
+          type: string
+        choice:
+          type: string
+        choiceText:
+          type: string
+        deltas:
+          type: object
+          properties:
+            perimeter:
+              type: number
+            morale:
+              type: number
+            resources:
+              type: number
+          required: [perimeter, morale, resources]
+      required: [round, scenarioText, choice, choiceText, deltas]
+    EvaluateRequest:
+      type: object
+      properties:
+        stats:
+          type: object
+          properties:
+            perimeter:
+              type: number
+            morale:
+              type: number
+            resources:
+              type: number
+          required: [perimeter, morale, resources]
+        history:
+          type: array
+          items:
+            $ref: "#/components/schemas/HistoryEntry"
+        rounds:
+          type: number
+        endReason:
+          type: string
+          enum: [max_rounds, stat_zero]
+      required: [stats, history, rounds, endReason]
+    EvaluateResult:
+      type: object
+      properties:
+        archetype:
+          type: string
+        archetypeEn:
+          type: string
+        overallScore:
+          type: number
+        verdict:
+          type: string
+        deepAnalysis:
+          type: string
+        strengths:
+          type: array
+          items:
+            type: string
+        blindspots:
+          type: array
+          items:
+            type: string
+      required: [archetype, archetypeEn, overallScore, verdict, deepAnalysis, strengths, blindspots]
     ErrorResponse:
       type: object
       properties:

@@ -45,6 +45,51 @@ export interface DecisionResult {
   analysis: string;
 }
 
+export type HistoryEntryDeltas = {
+  perimeter: number;
+  morale: number;
+  resources: number;
+};
+
+export interface HistoryEntry {
+  round: number;
+  scenarioText: string;
+  choice: string;
+  choiceText: string;
+  deltas: HistoryEntryDeltas;
+}
+
+export type EvaluateRequestStats = {
+  perimeter: number;
+  morale: number;
+  resources: number;
+};
+
+export type EvaluateRequestEndReason = typeof EvaluateRequestEndReason[keyof typeof EvaluateRequestEndReason];
+
+
+export const EvaluateRequestEndReason = {
+  max_rounds: 'max_rounds',
+  stat_zero: 'stat_zero',
+} as const;
+
+export interface EvaluateRequest {
+  stats: EvaluateRequestStats;
+  history: HistoryEntry[];
+  rounds: number;
+  endReason: EvaluateRequestEndReason;
+}
+
+export interface EvaluateResult {
+  archetype: string;
+  archetypeEn: string;
+  overallScore: number;
+  verdict: string;
+  deepAnalysis: string;
+  strengths: string[];
+  blindspots: string[];
+}
+
 export interface ErrorResponse {
   error: string;
 }
