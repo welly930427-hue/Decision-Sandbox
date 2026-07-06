@@ -3,49 +3,61 @@ import { openai } from "@workspace/integrations-openai-ai-server";
 
 const router = Router();
 
-const DECISION_SYSTEM_PROMPT = `你是一位高階組織戰略與領導力導師，專精於團隊心理學、組織政治學與危機管理。
+const DECISION_SYSTEM_PROMPT = `You are a senior organizational strategy and leadership coach specializing in team psychology, organizational politics, and crisis management.
 
-你負責主持一個互動式領導力推演沙盤模擬器。玩家扮演一位高階主管，需要在複雜的組織局勢中做出決策。
+You are running an interactive leadership simulation sandbox. The player is a senior executive making decisions in complex organizational situations.
 
-每當玩家做出決策後，你必須輸出一個 JSON 物件，包含以下欄位：
+CRITICAL INSTRUCTION: You MUST respond with ONLY a valid JSON object. No markdown, no code fences, no explanations, no extra text. Start your response with { and end with }.
 
-1. statDeltas：根據玩家的當前數據與決策，計算三項指標的合理增減幅度。每項必須是 -15 到 +15 之間的整數，需要有邏輯性，不能全部正向或全部負向。
-2. nextScenario：下一個突發領導力考驗情境，繁體中文，80-120字。必須融合團隊心理學與策管衝突，直接呼應玩家剛才決策的後果，帶有壓力感，避免重複之前情境主題。
-3. optionA：下一個情境的選項A，繁體中文，25-40字，帶有明確策略取向（例如強硬/集權/短期導向）。
-4. optionB：下一個情境的選項B，繁體中文，25-40字，帶有相反策略取向（例如懷柔/分權/長期導向）。
-5. analysis：一句精準的戰略分析，繁體中文，30-50字，評估玩家剛才決策對組織局勢的影響。
+When the player makes a decision, output a JSON object with exactly these fields:
+- "statDeltas": object with "perimeter", "morale", "resources" — each an integer from -15 to +15, logically derived from the decision (must not all be positive or all negative)
+- "nextScenario": string (Traditional Chinese, 80-120 characters) — next leadership crisis combining team psychology and strategic conflict, directly stemming from the player's decision
+- "optionA": string (Traditional Chinese, 25-40 characters) — next scenario option A with a clear strategic orientation (e.g. authoritative/short-term/centralized)
+- "optionB": string (Traditional Chinese, 25-40 characters) — next scenario option B with opposite orientation (e.g. collaborative/long-term/decentralized)
+- "analysis": string (Traditional Chinese, 30-50 characters) — one precise strategic assessment of the player's decision impact
 
-你的回應必須是純粹的 JSON，不得有任何 markdown 格式、代碼塊、說明文字。格式如下：
-{"statDeltas":{"perimeter":0,"morale":0,"resources":0},"nextScenario":"...","optionA":"...","optionB":"...","analysis":"..."}`;
+Example output format:
+{"statDeltas":{"perimeter":5,"morale":-8,"resources":3},"nextScenario":"...","optionA":"A｜...","optionB":"B｜...","analysis":"..."}`;
 
-const EVALUATE_SYSTEM_PROMPT = `你是一位結合馬基維利《君王論》與現代策略管理理論的頂尖領導力評估顧問。
+const EVALUATE_SYSTEM_PROMPT = `You are a top leadership assessment consultant combining Machiavelli's "The Prince" with modern strategic management theory.
 
-你的任務是根據玩家在領導力推演沙盤中的完整決策歷程，給出一份深刻的結算評估報告。
+CRITICAL INSTRUCTION: You MUST respond with ONLY a valid JSON object. No markdown, no code fences, no explanations, no extra text. Start your response with { and end with }.
 
-評估框架必須融合：
-- 《君王論》的核心法則（獅子的力量與狐狸的智慧、恩威並施的時機、命運女神與德行的博弈）
-- 策略管理理論（競爭優勢、資源基礎觀點、利害關係人管理、動態能力理論）
-- 組織心理學（權力距離、心理安全感、領導風格的情境適配）
+Based on the player's complete decision history in the leadership simulation, output a JSON object with exactly these fields:
+- "archetype": string (Traditional Chinese, 6-12 characters) — leadership archetype name
+- "archetypeEn": string (English, 2-4 words) — corresponding English archetype
+- "overallScore": integer 0-100 — comprehensive leadership score based on final stats and decision quality
+- "verdict": string (Traditional Chinese, 20-40 characters) — final verdict with Machiavellian sharpness
+- "deepAnalysis": string (Traditional Chinese, 200-280 characters) — deep analysis of decision patterns, strengths and blindspots, citing at least one principle from "The Prince" and one Strategic Management concept
+- "strengths": array of 3 strings (Traditional Chinese, each 10-20 characters) — core leadership strengths
+- "blindspots": array of 2 strings (Traditional Chinese, each 10-20 characters) — strategic blindspots
 
-你必須輸出一個 JSON 物件，包含以下欄位：
-1. archetype：領導者原型名稱，繁體中文，6-12字（例如：「謀定後動的戰略博弈者」、「剛愎自用的孤獨君主」）。
-2. archetypeEn：對應的英文原型名稱，2-4個英文單字（例如：Strategic Mastermind、Solitary Sovereign）。
-3. overallScore：綜合領導力評分，0-100的整數，根據最終三項指標與決策質量綜合判斷。
-4. verdict：一句最終裁決，繁體中文，20-40字，帶有《君王論》式的犀利洞見。
-5. deepAnalysis：深度點評，繁體中文，200-280字，分析玩家的決策模式、優勢與盲點，引用至少一個《君王論》觀點和一個策略管理概念。
-6. strengths：玩家的三個核心優勢，JSON陣列，每項10-20字的繁體中文字串。
-7. blindspots：玩家的兩個戰略盲點，JSON陣列，每項10-20字的繁體中文字串。
+Example output format:
+{"archetype":"謀定後動的戰略博弈者","archetypeEn":"Strategic Mastermind","overallScore":72,"verdict":"...","deepAnalysis":"...","strengths":["...","...","..."],"blindspots":["...","..."]}`;
 
-你的回應必須是純粹的 JSON，不得有任何 markdown 格式、代碼塊、說明文字。`;
+function extractJson(raw: string): unknown {
+  const trimmed = raw.trim();
+  if (!trimmed) throw new Error("Empty response from AI");
 
-function extractJson(raw: string): string {
-  const cleaned = raw.trim();
-  if (cleaned.startsWith("{")) return cleaned;
-  const fenceMatch = cleaned.match(/```(?:json)?\s*([\s\S]*?)```/);
-  if (fenceMatch?.[1]) return fenceMatch[1].trim();
-  const braceMatch = cleaned.match(/\{[\s\S]*\}/);
-  if (braceMatch?.[0]) return braceMatch[0];
-  throw new Error("No JSON found in AI response");
+  // Try direct parse first
+  if (trimmed.startsWith("{")) {
+    return JSON.parse(trimmed);
+  }
+
+  // Strip markdown code fences
+  const fenceMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (fenceMatch?.[1]) {
+    return JSON.parse(fenceMatch[1].trim());
+  }
+
+  // Find first JSON object
+  const braceStart = trimmed.indexOf("{");
+  const braceEnd = trimmed.lastIndexOf("}");
+  if (braceStart !== -1 && braceEnd > braceStart) {
+    return JSON.parse(trimmed.slice(braceStart, braceEnd + 1));
+  }
+
+  throw new Error(`Cannot find JSON in response: ${trimmed.slice(0, 200)}`);
 }
 
 router.post("/decision", async (req, res) => {
@@ -57,11 +69,11 @@ router.post("/decision", async (req, res) => {
     decisionCount: number;
   };
 
-  const userMessage = `當前局勢數據：權力邊界 ${stats.perimeter}%，團隊士氣 ${stats.morale}%，專案資源 ${stats.resources}%。決策輪次：第 ${decisionCount + 1} 輪。剛才的情境：${scenarioText}。玩家選擇了方案 ${choice}：${choiceText}。請輸出 JSON。`;
+  const userMessage = `Current stats — Perimeter: ${stats.perimeter}%, Morale: ${stats.morale}%, Resources: ${stats.resources}%. Round ${decisionCount + 1}. Scenario: ${scenarioText}. Player chose option ${choice}: ${choiceText}. Respond with JSON only.`;
 
   try {
-    const response = await openai.chat.completions.create({
-      model: "gpt-5",
+    const completion = await openai.chat.completions.create({
+      model: "gpt-5.4",
       max_completion_tokens: 1024,
       messages: [
         { role: "system", content: DECISION_SYSTEM_PROMPT },
@@ -69,8 +81,21 @@ router.post("/decision", async (req, res) => {
       ],
     });
 
-    const raw = response.choices[0]?.message?.content ?? "";
-    req.log.info({ raw }, "AI decision raw response");
+    const raw = completion.choices[0]?.message?.content ?? "";
+    const finishReason = completion.choices[0]?.finish_reason;
+    const refusal = completion.choices[0]?.message?.refusal;
+
+    // Log everything for debugging
+    console.log("[DECISION] finish_reason:", finishReason);
+    console.log("[DECISION] refusal:", refusal);
+    console.log("[DECISION] raw content:", JSON.stringify(raw));
+    req.log.info({ raw, finishReason, refusal }, "AI decision response");
+
+    if (!raw) {
+      const reason = refusal ? `AI 拒絕回應：${refusal}` : `AI 回傳空白（finish_reason: ${finishReason}）`;
+      res.status(500).json({ error: reason });
+      return;
+    }
 
     let parsed: {
       statDeltas: { perimeter: number; morale: number; resources: number };
@@ -81,21 +106,22 @@ router.post("/decision", async (req, res) => {
     };
 
     try {
-      parsed = JSON.parse(extractJson(raw));
+      parsed = extractJson(raw) as typeof parsed;
     } catch (parseErr) {
+      console.log("[DECISION] JSON parse error:", parseErr, "raw:", raw);
       req.log.error({ parseErr, raw }, "JSON parse failed");
-      res.status(500).json({ error: "AI 回應格式錯誤，請重試" });
+      res.status(500).json({ error: `AI 回應格式錯誤，請重試（原始：${raw.slice(0, 100)}）` });
       return;
     }
 
-    const clampDelta = (n: unknown) =>
-      Math.max(-15, Math.min(15, Math.round(Number(n) || 0)));
+    const clampDelta = (n: unknown) => Math.max(-15, Math.min(15, Math.round(Number(n) || 0)));
     parsed.statDeltas.perimeter = clampDelta(parsed.statDeltas.perimeter);
     parsed.statDeltas.morale = clampDelta(parsed.statDeltas.morale);
     parsed.statDeltas.resources = clampDelta(parsed.statDeltas.resources);
 
     res.json(parsed);
   } catch (err) {
+    console.log("[DECISION] Unexpected error:", err);
     req.log.error({ err }, "Decision AI error");
     res.status(500).json({ error: "AI 推演系統暫時無法回應，請重試" });
   }
@@ -110,25 +136,18 @@ router.post("/evaluate", async (req, res) => {
   };
 
   const historyText = history
-    .map(h => `第${h.round}輪 — 選擇${h.choice}（${h.choiceText.slice(0, 30)}）→ 邊界${h.deltas.perimeter >= 0 ? "+" : ""}${h.deltas.perimeter} 士氣${h.deltas.morale >= 0 ? "+" : ""}${h.deltas.morale} 資源${h.deltas.resources >= 0 ? "+" : ""}${h.deltas.resources}`)
+    .map(h => `Round ${h.round}: Chose ${h.choice} (${h.choiceText.slice(0, 40)}) → Perimeter${h.deltas.perimeter >= 0 ? "+" : ""}${h.deltas.perimeter} Morale${h.deltas.morale >= 0 ? "+" : ""}${h.deltas.morale} Resources${h.deltas.resources >= 0 ? "+" : ""}${h.deltas.resources}`)
     .join("\n");
 
   const endReasonText = endReason === "stat_zero"
-    ? "因某項指標歸零而提前終止"
-    : `完成全部 ${rounds} 輪推演`;
+    ? "terminated early due to a stat hitting zero"
+    : `completed all ${rounds} rounds`;
 
-  const userMessage = `玩家已完成領導力推演沙盤，${endReasonText}。
-
-最終指標：權力邊界 ${stats.perimeter}%，團隊士氣 ${stats.morale}%，專案資源 ${stats.resources}%。
-
-完整決策歷程：
-${historyText}
-
-請根據以上資訊，輸出深度評估 JSON。`;
+  const userMessage = `Player ${endReasonText}. Final stats: Perimeter ${stats.perimeter}%, Morale ${stats.morale}%, Resources ${stats.resources}%. Decision history:\n${historyText}\nRespond with JSON only.`;
 
   try {
-    const response = await openai.chat.completions.create({
-      model: "gpt-5",
+    const completion = await openai.chat.completions.create({
+      model: "gpt-5.4",
       max_completion_tokens: 2048,
       messages: [
         { role: "system", content: EVALUATE_SYSTEM_PROMPT },
@@ -136,8 +155,20 @@ ${historyText}
       ],
     });
 
-    const raw = response.choices[0]?.message?.content ?? "";
-    req.log.info({ raw }, "AI evaluate raw response");
+    const raw = completion.choices[0]?.message?.content ?? "";
+    const finishReason = completion.choices[0]?.finish_reason;
+    const refusal = completion.choices[0]?.message?.refusal;
+
+    console.log("[EVALUATE] finish_reason:", finishReason);
+    console.log("[EVALUATE] refusal:", refusal);
+    console.log("[EVALUATE] raw content:", JSON.stringify(raw));
+    req.log.info({ raw, finishReason, refusal }, "AI evaluate response");
+
+    if (!raw) {
+      const reason = refusal ? `AI 拒絕回應：${refusal}` : `AI 回傳空白（finish_reason: ${finishReason}）`;
+      res.status(500).json({ error: reason });
+      return;
+    }
 
     let parsed: {
       archetype: string;
@@ -150,10 +181,11 @@ ${historyText}
     };
 
     try {
-      parsed = JSON.parse(extractJson(raw));
+      parsed = extractJson(raw) as typeof parsed;
     } catch (parseErr) {
+      console.log("[EVALUATE] JSON parse error:", parseErr, "raw:", raw);
       req.log.error({ parseErr, raw }, "Evaluate JSON parse failed");
-      res.status(500).json({ error: "評估報告生成失敗，請重試" });
+      res.status(500).json({ error: `評估報告格式錯誤，請重試` });
       return;
     }
 
@@ -161,6 +193,7 @@ ${historyText}
 
     res.json(parsed);
   } catch (err) {
+    console.log("[EVALUATE] Unexpected error:", err);
     req.log.error({ err }, "Evaluate AI error");
     res.status(500).json({ error: "AI 評估系統暫時無法回應，請重試" });
   }
