@@ -15,6 +15,33 @@ interface ScenarioState {
   optionB: string;
 }
 
+interface Role {
+  id: string;
+  name: string;
+  en: string;
+  level: "高階" | "中階" | "基層";
+  levelEn: string;
+  icon: string;
+  desc: string;
+  clearance: string;
+}
+
+const ROLES: Role[] = [
+  { id: "ceo", name: "執行長", en: "CEO", level: "高階", levelEn: "Executive", icon: "♛", desc: "統御全局，於董事會博弈與戰略豪賭間定奪組織命脈", clearance: "OMEGA" },
+  { id: "cfo", name: "財務長", en: "CFO", level: "高階", levelEn: "Executive", icon: "◈", desc: "掌控資本與預算，於刪減壓力與跨部門利益衝突中權衡", clearance: "ALPHA" },
+  { id: "cso", name: "永續長", en: "CSO", level: "高階", levelEn: "Executive", icon: "❋", desc: "推動 ESG 布局，於永續價值與獲利現實間尋求平衡", clearance: "ALPHA" },
+  { id: "cae", name: "稽核長", en: "CAE", level: "高階", levelEn: "Executive", icon: "⊛", desc: "獨立監督治理，於管理層施壓下堅守合規紅線", clearance: "ALPHA" },
+  { id: "hr", name: "人資總監", en: "HR Director", level: "中階", levelEn: "Middle Mgmt", icon: "◉", desc: "經營人才梯隊，於向上管理與向下領導間協調斡旋", clearance: "BETA" },
+  { id: "pm", name: "產品經理", en: "Product Manager", level: "中階", levelEn: "Middle Mgmt", icon: "◆", desc: "統籌跨部門資源，於交付期限與品質標準間拉鋸", clearance: "BETA" },
+  { id: "frontline", name: "基層專員", en: "Frontline Specialist", level: "基層", levelEn: "Frontline", icon: "▲", desc: "直面第一線執行，於工時壓力與矛盾指令中求存", clearance: "GAMMA" },
+];
+
+function getLevelColor(level: Role["level"]): string {
+  if (level === "高階") return "hsl(195 100% 45%)";
+  if (level === "中階") return "hsl(38 95% 55%)";
+  return "hsl(142 70% 45%)";
+}
+
 interface HistoryEntry {
   round: number;
   scenarioText: string;
@@ -33,11 +60,7 @@ interface EvaluateResult {
   blindspots: string[];
 }
 
-const INITIAL_SCENARIO: ScenarioState = {
-  text: "核心成員因資源分配不均，出現抗拒心理。財務長私下告知你，若繼續當前路線，六週內將觸底。高層對你的執行力開始出現質疑聲浪。",
-  optionA: "A｜重組資源分配方案，暫緩非核心專案，優先穩定核心人員",
-  optionB: "B｜維持現有路線，向董事會申請額外資本注入，展現信心",
-};
+const BLANK_SCENARIO: ScenarioState = { text: "", optionA: "", optionB: "" };
 
 const TRANSITION_MSGS = [
   "決策已記錄，正在推演局勢...",
@@ -263,7 +286,11 @@ export default function Simulator() {
     { label: "專案資源", labelEn: "Resources", value: 50, icon: "◆" },
   ]);
   const [deltas, setDeltas] = useState<(number | null)[]>([null, null, null]);
-  const [scenario, setScenario] = useState<ScenarioState>(INITIAL_SCENARIO);
+  const [scenario, setScenario] = useState<ScenarioState>(BLANK_SCENARIO);
+  const [selectedRole, setSelectedRole] = useState<Role | null>(null);
+  const [pendingRole, setPendingRole] = useState<Role | null>(null);
+  const [starting, setStarting] = useState(false);
+  const [startError, setStartError] = useState<string | null>(null);
   const [transitioning, setTransitioning] = useState(false);
   const [transitionMsg, setTransitionMsg] = useState("");
   const [aiError, setAiError] = useState<string | null>(null);
@@ -294,7 +321,11 @@ export default function Simulator() {
       { label: "專案資源", labelEn: "Resources", value: 50, icon: "◆" },
     ]);
     setDeltas([null, null, null]);
-    setScenario(INITIAL_SCENARIO);
+    setScenario(BLANK_SCENARIO);
+    setSelectedRole(null);
+    setPendingRole(null);
+    setStarting(false);
+    setStartError(null);
     setTransitioning(false);
     setTransitionMsg("");
     setAiError(null);
@@ -308,6 +339,35 @@ export default function Simulator() {
     setEvalResult(null);
     setEvalError(null);
     setEvaluating(false);
+  }
+
+  async function selectRole(role: Role) {
+    if (starting) return;
+    setPendingRole(role);
+    setStarting(true);
+    setStartError(null);
+
+    try {
+      const res = await fetch("/api/start", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ roleName: role.name, roleEn: role.en, roleLevel: role.level }),
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({ error: "啟動失敗" }));
+        throw new Error((errData as { error: string }).error || "啟動失敗");
+      }
+
+      const data = await res.json() as { scenario: string; optionA: string; optionB: string };
+      setScenario({ text: data.scenario, optionA: data.optionA, optionB: data.optionB });
+      setSelectedRole(role);
+    } catch (err) {
+      setStartError(err instanceof Error ? err.message : "AI 系統暫時無法回應，請重試");
+    } finally {
+      setStarting(false);
+      setPendingRole(null);
+    }
   }
 
   async function triggerGameOver(
@@ -334,6 +394,9 @@ export default function Simulator() {
           history: finalHistory,
           rounds: finalRounds,
           endReason: reason,
+          roleName: selectedRole?.name ?? "",
+          roleEn: selectedRole?.en ?? "",
+          roleLevel: selectedRole?.level ?? "",
         }),
       });
 
@@ -381,6 +444,9 @@ export default function Simulator() {
           scenarioText: scenario.text,
           stats: currentStats,
           decisionCount,
+          roleName: selectedRole?.name ?? "",
+          roleEn: selectedRole?.en ?? "",
+          roleLevel: selectedRole?.level ?? "",
         }),
       });
 
@@ -455,6 +521,123 @@ export default function Simulator() {
 
   const roundsLabel = `${decisionCount} / ${MAX_ROUNDS}`;
 
+  // ─── ROLE SELECTION SCREEN ───
+  if (!selectedRole) {
+    return (
+      <div className="min-h-screen flex flex-col relative overflow-hidden" style={{ fontFamily: "var(--app-font-sans)" }}>
+        <div className="absolute inset-0 grid-backdrop pointer-events-none" />
+        <div className="absolute inset-0 scanlines opacity-[0.06] pointer-events-none" />
+
+        {/* Top bar */}
+        <header className="border-b border-border/50 bg-card/40 backdrop-blur-sm px-6 py-3 flex items-center justify-between flex-shrink-0 relative z-10">
+          <div className="flex items-center gap-3">
+            <div className="pulse-dot w-2 h-2 rounded-full" style={{ backgroundColor: "hsl(195 100% 45%)", color: "hsl(195 100% 45%)" }} />
+            <span className="font-mono text-xs tracking-widest text-muted-foreground uppercase">Decision Boundary Terminal</span>
+            <span className="text-muted-foreground/40 text-xs">v2.4.1 · AI</span>
+          </div>
+          <div className="font-mono text-xs tracking-widest px-3 py-1 rounded border flex items-center gap-1.5" style={{ borderColor: "hsl(195 100% 45% / 0.3)", color: "hsl(195 100% 45%)", backgroundColor: "hsl(195 100% 45% / 0.06)" }}>
+            <span className="w-1.5 h-1.5 rounded-full pulse-dot" style={{ backgroundColor: "hsl(195 100% 45%)", color: "hsl(195 100% 45%)" }} />
+            ACCESS CONTROL
+          </div>
+        </header>
+
+        <div className="flex-1 overflow-y-auto relative z-10 flex flex-col items-center px-6 py-10">
+          {/* Title block */}
+          <div className="text-center mb-10 slide-in">
+            <div className="flex items-center justify-center gap-3 mb-3">
+              <div className="h-px w-12" style={{ background: "linear-gradient(90deg, transparent, hsl(195 100% 45% / 0.6))" }} />
+              <span className="font-mono text-xs tracking-[0.3em] uppercase" style={{ color: "hsl(195 100% 45% / 0.7)" }}>Secure Access · Role Authentication</span>
+              <div className="h-px w-12" style={{ background: "linear-gradient(90deg, hsl(195 100% 45% / 0.6), transparent)" }} />
+            </div>
+            <h1 className="text-3xl font-bold tracking-widest text-foreground mb-2">決策邊界 · 領導力推演沙盤</h1>
+            <p className="font-mono text-sm text-muted-foreground/60 tracking-wider">
+              選擇你的權限身分 — AI 將依職級量身推演專屬領導情境
+            </p>
+          </div>
+
+          {/* Start error */}
+          {startError && (
+            <div className="mb-6 px-4 py-2 rounded-lg border font-mono text-sm slide-in" style={{ borderColor: "hsl(0 80% 55% / 0.4)", color: "hsl(0 80% 65%)", backgroundColor: "hsl(0 80% 55% / 0.06)" }}>
+              ⚠ {startError} — 請重新選擇身分
+            </div>
+          )}
+
+          {/* Role grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 w-full max-w-5xl">
+            {ROLES.map((role, i) => {
+              const levelColor = getLevelColor(role.level);
+              const isPending = pendingRole?.id === role.id;
+              const isDisabled = starting;
+              return (
+                <button
+                  key={role.id}
+                  onClick={() => selectRole(role)}
+                  disabled={isDisabled}
+                  className="role-card group relative text-left rounded-xl border p-5 overflow-hidden slide-in disabled:cursor-not-allowed"
+                  style={{
+                    backgroundColor: "hsl(220 22% 8% / 0.7)",
+                    borderColor: isPending ? levelColor : "hsl(195 100% 45% / 0.14)",
+                    animationDelay: `${i * 60}ms`,
+                    ["--role-accent" as string]: levelColor,
+                  }}
+                >
+                  <div className="absolute top-0 left-0 w-5 h-5 border-t border-l rounded-tl-xl transition-colors" style={{ borderColor: `${levelColor}66` }} />
+                  <div className="absolute bottom-0 right-0 w-5 h-5 border-b border-r rounded-br-xl transition-colors" style={{ borderColor: `${levelColor}66` }} />
+                  <div className="role-card-glow absolute inset-0 pointer-events-none" style={{ background: `radial-gradient(circle at 50% 0%, ${levelColor}18, transparent 70%)` }} />
+
+                  <div className="relative flex items-start justify-between mb-4">
+                    <div
+                      className="w-11 h-11 rounded-lg flex items-center justify-center text-xl transition-all group-hover:scale-110"
+                      style={{ backgroundColor: `${levelColor}14`, border: `1px solid ${levelColor}40`, color: levelColor }}
+                    >
+                      {role.icon}
+                    </div>
+                    <div className="flex flex-col items-end gap-1">
+                      <span className="font-mono text-[10px] tracking-widest px-2 py-0.5 rounded border uppercase" style={{ borderColor: `${levelColor}40`, color: levelColor, backgroundColor: `${levelColor}0d` }}>
+                        {role.level}
+                      </span>
+                      <span className="font-mono text-[10px] text-muted-foreground/40 tracking-widest">CLR·{role.clearance}</span>
+                    </div>
+                  </div>
+
+                  <div className="relative flex items-baseline gap-2 mb-1">
+                    <h3 className="text-lg font-bold text-foreground">{role.name}</h3>
+                    <span className="font-mono text-xs" style={{ color: `${levelColor}b3` }}>{role.en}</span>
+                  </div>
+                  <p className="relative text-xs leading-relaxed text-muted-foreground/70 min-h-[2.5rem]">{role.desc}</p>
+
+                  <div className="relative mt-4 pt-3 border-t flex items-center justify-between" style={{ borderColor: "hsl(195 100% 45% / 0.08)" }}>
+                    <span className="font-mono text-[10px] tracking-widest text-muted-foreground/40 uppercase">{role.levelEn}</span>
+                    <span className="font-mono text-xs tracking-widest transition-all opacity-0 group-hover:opacity-100 flex items-center gap-1" style={{ color: levelColor }}>
+                      {isPending ? "驗證中..." : "登入 →"}
+                    </span>
+                  </div>
+
+                  {isPending && (
+                    <div className="absolute inset-0 flex items-center justify-center backdrop-blur-sm" style={{ backgroundColor: "hsl(220 22% 6% / 0.7)" }}>
+                      <div className="flex flex-col items-center gap-3">
+                        <div className="flex gap-1.5">
+                          {[0, 1, 2].map(d => (
+                            <div key={d} className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: levelColor, animation: `pulse-dot 1.2s ease-in-out ${d * 0.2}s infinite` }} />
+                          ))}
+                        </div>
+                        <span className="font-mono text-xs tracking-widest" style={{ color: levelColor }}>AI 建構情境中...</span>
+                      </div>
+                    </div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="mt-10 font-mono text-xs text-muted-foreground/30 tracking-widest text-center">
+            SIMULATION ENGINE · BUILD 2041 — 高階 / 中階 / 基層 三級情境引擎已就緒
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex flex-col" style={{ fontFamily: "var(--app-font-sans)" }}>
       {/* Top bar */}
@@ -463,6 +646,15 @@ export default function Simulator() {
           <div className="pulse-dot w-2 h-2 rounded-full" style={{ backgroundColor: "hsl(195 100% 45%)", color: "hsl(195 100% 45%)" }} />
           <span className="font-mono text-xs tracking-widest text-muted-foreground uppercase">Decision Boundary Terminal</span>
           <span className="text-muted-foreground/40 text-xs">v2.4.1 · AI</span>
+          {selectedRole && (
+            <span
+              className="ml-1 font-mono text-xs tracking-widest px-2 py-0.5 rounded border flex items-center gap-1.5"
+              style={{ borderColor: `${getLevelColor(selectedRole.level)}40`, color: getLevelColor(selectedRole.level), backgroundColor: `${getLevelColor(selectedRole.level)}0d` }}
+            >
+              <span>{selectedRole.icon}</span>
+              {selectedRole.name} · {selectedRole.en}
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-6">
           <div className="text-center">
@@ -601,7 +793,7 @@ export default function Simulator() {
                   </span>
                   <div className="ml-auto flex items-center gap-1.5">
                     <span className="font-mono text-xs text-muted-foreground/40">Powered by</span>
-                    <span className="font-mono text-xs font-semibold" style={{ color: "hsl(195 100% 45% / 0.7)" }}>GPT-5 · AI Dynamics</span>
+                    <span className="font-mono text-xs font-semibold" style={{ color: "hsl(195 100% 45% / 0.7)" }}>GPT-5.4 · AI Dynamics</span>
                   </div>
                 </div>
 

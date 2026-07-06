@@ -29,6 +29,9 @@ export interface DecisionRequest {
   scenarioText: string;
   stats: DecisionRequestStats;
   decisionCount: number;
+  roleName: string;
+  roleEn: string;
+  roleLevel: string;
 }
 
 export type DecisionResultStatDeltas = {
@@ -78,6 +81,21 @@ export interface EvaluateRequest {
   history: HistoryEntry[];
   rounds: number;
   endReason: EvaluateRequestEndReason;
+  roleName: string;
+  roleEn: string;
+  roleLevel: string;
+}
+
+export interface StartRequest {
+  roleName: string;
+  roleEn: string;
+  roleLevel: string;
+}
+
+export interface StartResult {
+  scenario: string;
+  optionA: string;
+  optionB: string;
 }
 
 export interface EvaluateResult {

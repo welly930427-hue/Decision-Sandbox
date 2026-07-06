@@ -1,0 +1,1 @@
+- [OpenAI integration quirks](openai-integration.md) — use gpt-5.4 not gpt-5 (gpt-5 returns empty content); max_completion_tokens, no temperature; JSON-only prompt tips.

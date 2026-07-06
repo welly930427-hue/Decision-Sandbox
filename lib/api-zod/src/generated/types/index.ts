@@ -19,3 +19,5 @@ export * from './evaluateResult';
 export * from './healthStatus';
 export * from './historyEntry';
 export * from './historyEntryDeltas';
+export * from './startRequest';
+export * from './startResult';

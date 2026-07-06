@@ -14,4 +14,7 @@ export interface EvaluateRequest {
   history: HistoryEntry[];
   rounds: number;
   endReason: EvaluateRequestEndReason;
+  roleName: string;
+  roleEn: string;
+  roleLevel: string;
 }

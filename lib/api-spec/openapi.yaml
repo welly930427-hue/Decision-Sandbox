@@ -26,6 +26,31 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /start:
+    post:
+      operationId: startSimulation
+      tags: [decision]
+      summary: Start a role-based simulation
+      description: Generates the first role-specific scenario based on the chosen role and seniority level
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StartRequest"
+      responses:
+        "200":
+          description: AI-generated opening scenario
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StartResult"
+        "500":
+          description: AI processing error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /decision:
     post:
       operationId: processDecision
@@ -45,6 +70,31 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/DecisionResult"
+        "500":
+          description: AI processing error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /evaluate:
+    post:
+      operationId: evaluateSimulation
+      tags: [decision]
+      summary: Generate a leadership evaluation report
+      description: Sends the full decision history to AI for a final leadership assessment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EvaluateRequest"
+      responses:
+        "200":
+          description: AI-generated evaluation report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EvaluateResult"
         "500":
           description: AI processing error
           content:
@@ -85,12 +135,21 @@ components:
             - resources
         decisionCount:
           type: number
+        roleName:
+          type: string
+        roleEn:
+          type: string
+        roleLevel:
+          type: string
       required:
         - choice
         - choiceText
         - scenarioText
         - stats
         - decisionCount
+        - roleName
+        - roleEn
+        - roleLevel
     DecisionResult:
       type: object
       properties:
@@ -165,7 +224,33 @@ components:
         endReason:
           type: string
           enum: [max_rounds, stat_zero]
-      required: [stats, history, rounds, endReason]
+        roleName:
+          type: string
+        roleEn:
+          type: string
+        roleLevel:
+          type: string
+      required: [stats, history, rounds, endReason, roleName, roleEn, roleLevel]
+    StartRequest:
+      type: object
+      properties:
+        roleName:
+          type: string
+        roleEn:
+          type: string
+        roleLevel:
+          type: string
+      required: [roleName, roleEn, roleLevel]
+    StartResult:
+      type: object
+      properties:
+        scenario:
+          type: string
+        optionA:
+          type: string
+        optionB:
+          type: string
+      required: [scenario, optionA, optionB]
     EvaluateResult:
       type: object
       properties:

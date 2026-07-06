@@ -18,6 +18,23 @@ export const HealthCheckResponse = zod.object({
 
 
 /**
+ * Generates the first role-specific scenario based on the chosen role and seniority level
+ * @summary Start a role-based simulation
+ */
+export const StartSimulationBody = zod.object({
+  "roleName": zod.string(),
+  "roleEn": zod.string(),
+  "roleLevel": zod.string()
+})
+
+export const StartSimulationResponse = zod.object({
+  "scenario": zod.string(),
+  "optionA": zod.string(),
+  "optionB": zod.string()
+})
+
+
+/**
  * Sends current game state and player choice to AI for dynamic scenario generation
  * @summary Process a leadership decision
  */
@@ -30,7 +47,10 @@ export const ProcessDecisionBody = zod.object({
   "morale": zod.number(),
   "resources": zod.number()
 }),
-  "decisionCount": zod.number()
+  "decisionCount": zod.number(),
+  "roleName": zod.string(),
+  "roleEn": zod.string(),
+  "roleLevel": zod.string()
 })
 
 export const ProcessDecisionResponse = zod.object({
@@ -43,6 +63,45 @@ export const ProcessDecisionResponse = zod.object({
   "optionA": zod.string(),
   "optionB": zod.string(),
   "analysis": zod.string()
+})
+
+
+/**
+ * Sends the full decision history to AI for a final leadership assessment
+ * @summary Generate a leadership evaluation report
+ */
+export const EvaluateSimulationBody = zod.object({
+  "stats": zod.object({
+  "perimeter": zod.number(),
+  "morale": zod.number(),
+  "resources": zod.number()
+}),
+  "history": zod.array(zod.object({
+  "round": zod.number(),
+  "scenarioText": zod.string(),
+  "choice": zod.string(),
+  "choiceText": zod.string(),
+  "deltas": zod.object({
+  "perimeter": zod.number(),
+  "morale": zod.number(),
+  "resources": zod.number()
+})
+})),
+  "rounds": zod.number(),
+  "endReason": zod.enum(['max_rounds', 'stat_zero']),
+  "roleName": zod.string(),
+  "roleEn": zod.string(),
+  "roleLevel": zod.string()
+})
+
+export const EvaluateSimulationResponse = zod.object({
+  "archetype": zod.string(),
+  "archetypeEn": zod.string(),
+  "overallScore": zod.number(),
+  "verdict": zod.string(),
+  "deepAnalysis": zod.string(),
+  "strengths": zod.array(zod.string()),
+  "blindspots": zod.array(zod.string())
 })
 
 

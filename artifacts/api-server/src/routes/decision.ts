@@ -3,17 +3,38 @@ import { openai } from "@workspace/integrations-openai-ai-server";
 
 const router = Router();
 
-const DECISION_SYSTEM_PROMPT = `You are a senior organizational strategy and leadership coach specializing in team psychology, organizational politics, and crisis management.
+const LEVEL_GUIDE = `SCENARIO DESIGN BY SENIORITY LEVEL — you MUST tailor every scenario to the player's role and seniority:
+- 高階 (Executive: CEO/CFO/CSO/CAE/etc.): Design boardroom-level conflicts — capital allocation, budget cuts, cross-department power struggles, board & shareholder pressure, M&A risk, organizational politics, long-term strategy vs short-term earnings. A CFO faces budget-cut mandates and cross-department interest conflicts; a CEO faces board battles and strategic bets; a CSO faces ESG vs profitability tension; a CAE faces independence vs management-pressure dilemmas.
+- 中階 (Middle management: HR Director/Product Manager/etc.): Design cross-functional coordination crises — resource contention between teams, the dual pressure of managing up and leading down, conflicting directives, project delivery deadlines, talent retention, stakeholder alignment.
+- 基層 (Frontline Specialist): Design execution-level dilemmas — heavy workload and work-hour pressure (加班/工時壓力), execution difficulty (執行困難), conflicting instructions from a direct supervisor, team collaboration friction, limited authority vs high accountability, career anxiety, whether to speak up or comply.
 
-You are running an interactive leadership simulation sandbox. The player is a senior executive making decisions in complex organizational situations.
+Always keep the scenario tone appropriate to the seniority. A frontline specialist should NOT be deciding company M&A; a CEO should NOT be worrying about personal overtime hours.`;
+
+const START_SYSTEM_PROMPT = `You are a senior organizational strategy and leadership coach specializing in team psychology, organizational politics, and crisis management, running an interactive leadership simulation sandbox.
+
+${LEVEL_GUIDE}
+
+CRITICAL INSTRUCTION: You MUST respond with ONLY a valid JSON object. No markdown, no code fences, no explanations, no extra text. Start your response with { and end with }.
+
+Generate the OPENING scenario for the player's role. Output a JSON object with exactly these fields:
+- "scenario": string (Traditional Chinese, 80-120 characters) — an opening leadership crisis tailored to the role's seniority level, combining team psychology and strategic/organizational conflict
+- "optionA": string (Traditional Chinese, 25-40 characters) — option A with a clear orientation (e.g. authoritative/short-term/centralized), MUST start with "A｜"
+- "optionB": string (Traditional Chinese, 25-40 characters) — option B with the opposite orientation (e.g. collaborative/long-term/decentralized), MUST start with "B｜"
+
+Example output format:
+{"scenario":"...","optionA":"A｜...","optionB":"B｜..."}`;
+
+const DECISION_SYSTEM_PROMPT = `You are a senior organizational strategy and leadership coach specializing in team psychology, organizational politics, and crisis management, running an interactive leadership simulation sandbox. The player is making decisions in complex organizational situations.
+
+${LEVEL_GUIDE}
 
 CRITICAL INSTRUCTION: You MUST respond with ONLY a valid JSON object. No markdown, no code fences, no explanations, no extra text. Start your response with { and end with }.
 
 When the player makes a decision, output a JSON object with exactly these fields:
 - "statDeltas": object with "perimeter", "morale", "resources" — each an integer from -15 to +15, logically derived from the decision (must not all be positive or all negative)
-- "nextScenario": string (Traditional Chinese, 80-120 characters) — next leadership crisis combining team psychology and strategic conflict, directly stemming from the player's decision
-- "optionA": string (Traditional Chinese, 25-40 characters) — next scenario option A with a clear strategic orientation (e.g. authoritative/short-term/centralized)
-- "optionB": string (Traditional Chinese, 25-40 characters) — next scenario option B with opposite orientation (e.g. collaborative/long-term/decentralized)
+- "nextScenario": string (Traditional Chinese, 80-120 characters) — next leadership crisis tailored to the role's seniority level, combining team psychology and strategic conflict, directly stemming from the player's decision
+- "optionA": string (Traditional Chinese, 25-40 characters) — next scenario option A with a clear strategic orientation (e.g. authoritative/short-term/centralized), MUST start with "A｜"
+- "optionB": string (Traditional Chinese, 25-40 characters) — next scenario option B with opposite orientation (e.g. collaborative/long-term/decentralized), MUST start with "B｜"
 - "analysis": string (Traditional Chinese, 30-50 characters) — one precise strategic assessment of the player's decision impact
 
 Example output format:
@@ -23,12 +44,12 @@ const EVALUATE_SYSTEM_PROMPT = `You are a top leadership assessment consultant c
 
 CRITICAL INSTRUCTION: You MUST respond with ONLY a valid JSON object. No markdown, no code fences, no explanations, no extra text. Start your response with { and end with }.
 
-Based on the player's complete decision history in the leadership simulation, output a JSON object with exactly these fields:
+Based on the player's role, seniority level, and complete decision history in the leadership simulation, output a JSON object with exactly these fields:
 - "archetype": string (Traditional Chinese, 6-12 characters) — leadership archetype name
 - "archetypeEn": string (English, 2-4 words) — corresponding English archetype
 - "overallScore": integer 0-100 — comprehensive leadership score based on final stats and decision quality
-- "verdict": string (Traditional Chinese, 20-40 characters) — final verdict with Machiavellian sharpness
-- "deepAnalysis": string (Traditional Chinese, 200-280 characters) — deep analysis of decision patterns, strengths and blindspots, citing at least one principle from "The Prince" and one Strategic Management concept
+- "verdict": string (Traditional Chinese, 20-40 characters) — final verdict with Machiavellian sharpness, referencing the player's specific role
+- "deepAnalysis": string (Traditional Chinese, 200-280 characters) — deep analysis of decision patterns, strengths and blindspots relative to the role's seniority level, citing at least one principle from "The Prince" and one Strategic Management concept
 - "strengths": array of 3 strings (Traditional Chinese, each 10-20 characters) — core leadership strengths
 - "blindspots": array of 2 strings (Traditional Chinese, each 10-20 characters) — strategic blindspots
 
@@ -60,16 +81,71 @@ function extractJson(raw: string): unknown {
   throw new Error(`Cannot find JSON in response: ${trimmed.slice(0, 200)}`);
 }
 
+router.post("/start", async (req, res) => {
+  const { roleName, roleEn, roleLevel } = req.body as {
+    roleName: string;
+    roleEn: string;
+    roleLevel: string;
+  };
+
+  const userMessage = `The player's role is: ${roleName} (${roleEn}), seniority level: ${roleLevel}. Generate the opening scenario tailored to this role and level. Respond with JSON only.`;
+
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-5.4",
+      max_completion_tokens: 1024,
+      messages: [
+        { role: "system", content: START_SYSTEM_PROMPT },
+        { role: "user", content: userMessage },
+      ],
+    });
+
+    const raw = completion.choices[0]?.message?.content ?? "";
+    const finishReason = completion.choices[0]?.finish_reason;
+    const refusal = completion.choices[0]?.message?.refusal;
+
+    console.log("[START] finish_reason:", finishReason);
+    console.log("[START] refusal:", refusal);
+    console.log("[START] raw content:", JSON.stringify(raw));
+    req.log.info({ raw, finishReason, refusal }, "AI start response");
+
+    if (!raw) {
+      const reason = refusal ? `AI 拒絕回應：${refusal}` : `AI 回傳空白（finish_reason: ${finishReason}）`;
+      res.status(500).json({ error: reason });
+      return;
+    }
+
+    let parsed: { scenario: string; optionA: string; optionB: string };
+    try {
+      parsed = extractJson(raw) as typeof parsed;
+    } catch (parseErr) {
+      console.log("[START] JSON parse error:", parseErr, "raw:", raw);
+      req.log.error({ parseErr, raw }, "Start JSON parse failed");
+      res.status(500).json({ error: `AI 回應格式錯誤，請重試` });
+      return;
+    }
+
+    res.json(parsed);
+  } catch (err) {
+    console.log("[START] Unexpected error:", err);
+    req.log.error({ err }, "Start AI error");
+    res.status(500).json({ error: "AI 推演系統暫時無法回應，請重試" });
+  }
+});
+
 router.post("/decision", async (req, res) => {
-  const { choice, choiceText, scenarioText, stats, decisionCount } = req.body as {
+  const { choice, choiceText, scenarioText, stats, decisionCount, roleName, roleEn, roleLevel } = req.body as {
     choice: "A" | "B";
     choiceText: string;
     scenarioText: string;
     stats: { perimeter: number; morale: number; resources: number };
     decisionCount: number;
+    roleName: string;
+    roleEn: string;
+    roleLevel: string;
   };
 
-  const userMessage = `Current stats — Perimeter: ${stats.perimeter}%, Morale: ${stats.morale}%, Resources: ${stats.resources}%. Round ${decisionCount + 1}. Scenario: ${scenarioText}. Player chose option ${choice}: ${choiceText}. Respond with JSON only.`;
+  const userMessage = `The player's role is: ${roleName} (${roleEn}), seniority level: ${roleLevel}. Current stats — Perimeter: ${stats.perimeter}%, Morale: ${stats.morale}%, Resources: ${stats.resources}%. Round ${decisionCount + 1}. Scenario: ${scenarioText}. Player chose option ${choice}: ${choiceText}. Respond with JSON only.`;
 
   try {
     const completion = await openai.chat.completions.create({
@@ -128,11 +204,14 @@ router.post("/decision", async (req, res) => {
 });
 
 router.post("/evaluate", async (req, res) => {
-  const { stats, history, rounds, endReason } = req.body as {
+  const { stats, history, rounds, endReason, roleName, roleEn, roleLevel } = req.body as {
     stats: { perimeter: number; morale: number; resources: number };
     history: Array<{ round: number; scenarioText: string; choice: string; choiceText: string; deltas: { perimeter: number; morale: number; resources: number } }>;
     rounds: number;
     endReason: "max_rounds" | "stat_zero";
+    roleName: string;
+    roleEn: string;
+    roleLevel: string;
   };
 
   const historyText = history
@@ -143,7 +222,7 @@ router.post("/evaluate", async (req, res) => {
     ? "terminated early due to a stat hitting zero"
     : `completed all ${rounds} rounds`;
 
-  const userMessage = `Player ${endReasonText}. Final stats: Perimeter ${stats.perimeter}%, Morale ${stats.morale}%, Resources ${stats.resources}%. Decision history:\n${historyText}\nRespond with JSON only.`;
+  const userMessage = `The player's role is: ${roleName} (${roleEn}), seniority level: ${roleLevel}. Player ${endReasonText}. Final stats: Perimeter ${stats.perimeter}%, Morale ${stats.morale}%, Resources ${stats.resources}%. Decision history:\n${historyText}\nRespond with JSON only.`;
 
   try {
     const completion = await openai.chat.completions.create({

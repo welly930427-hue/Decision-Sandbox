@@ -23,7 +23,11 @@ import type {
   DecisionRequest,
   DecisionResult,
   ErrorResponse,
-  HealthStatus
+  EvaluateRequest,
+  EvaluateResult,
+  HealthStatus,
+  StartRequest,
+  StartResult
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -131,6 +135,77 @@ export function useHealthCheck<TData = Awaited<ReturnType<typeof healthCheck>>, 
 
 
 
+export const getStartSimulationUrl = () => {
+
+
+
+
+  return `/api/start`
+}
+
+/**
+ * Generates the first role-specific scenario based on the chosen role and seniority level
+ * @summary Start a role-based simulation
+ */
+export const startSimulation = async (startRequest: StartRequest, options?: RequestInit): Promise<StartResult> => {
+
+  return customFetch<StartResult>(getStartSimulationUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(startRequest)
+  }
+);}
+
+
+
+
+export const getStartSimulationMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof startSimulation>>, TError,{data: BodyType<StartRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof startSimulation>>, TError,{data: BodyType<StartRequest>}, TContext> => {
+
+const mutationKey = ['startSimulation'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof startSimulation>>, {data: BodyType<StartRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  startSimulation(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type StartSimulationMutationResult = NonNullable<Awaited<ReturnType<typeof startSimulation>>>
+    export type StartSimulationMutationBody = BodyType<StartRequest>
+    export type StartSimulationMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Start a role-based simulation
+ */
+export const useStartSimulation = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof startSimulation>>, TError,{data: BodyType<StartRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof startSimulation>>,
+        TError,
+        {data: BodyType<StartRequest>},
+        TContext
+      > => {
+      return useMutation(getStartSimulationMutationOptions(options));
+    }
+
 export const getProcessDecisionUrl = () => {
 
 
@@ -200,5 +275,76 @@ export const useProcessDecision = <TError = ErrorType<ErrorResponse>,
         TContext
       > => {
       return useMutation(getProcessDecisionMutationOptions(options));
+    }
+
+export const getEvaluateSimulationUrl = () => {
+
+
+
+
+  return `/api/evaluate`
+}
+
+/**
+ * Sends the full decision history to AI for a final leadership assessment
+ * @summary Generate a leadership evaluation report
+ */
+export const evaluateSimulation = async (evaluateRequest: EvaluateRequest, options?: RequestInit): Promise<EvaluateResult> => {
+
+  return customFetch<EvaluateResult>(getEvaluateSimulationUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(evaluateRequest)
+  }
+);}
+
+
+
+
+export const getEvaluateSimulationMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof evaluateSimulation>>, TError,{data: BodyType<EvaluateRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof evaluateSimulation>>, TError,{data: BodyType<EvaluateRequest>}, TContext> => {
+
+const mutationKey = ['evaluateSimulation'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof evaluateSimulation>>, {data: BodyType<EvaluateRequest>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  evaluateSimulation(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type EvaluateSimulationMutationResult = NonNullable<Awaited<ReturnType<typeof evaluateSimulation>>>
+    export type EvaluateSimulationMutationBody = BodyType<EvaluateRequest>
+    export type EvaluateSimulationMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Generate a leadership evaluation report
+ */
+export const useEvaluateSimulation = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof evaluateSimulation>>, TError,{data: BodyType<EvaluateRequest>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof evaluateSimulation>>,
+        TError,
+        {data: BodyType<EvaluateRequest>},
+        TContext
+      > => {
+      return useMutation(getEvaluateSimulationMutationOptions(options));
     }
 

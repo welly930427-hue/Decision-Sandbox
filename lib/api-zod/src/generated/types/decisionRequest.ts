@@ -14,4 +14,7 @@ export interface DecisionRequest {
   scenarioText: string;
   stats: DecisionRequestStats;
   decisionCount: number;
+  roleName: string;
+  roleEn: string;
+  roleLevel: string;
 }
