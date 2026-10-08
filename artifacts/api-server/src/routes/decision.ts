@@ -93,6 +93,22 @@ function extractJson(raw: string): unknown {
   throw new Error(`Cannot find JSON in response: ${trimmed.slice(0, 200)}`);
 }
 
+function getSafeErrorContext(err: unknown) {
+  if (!err || typeof err !== "object") return {};
+
+  const error = err as {
+    status?: unknown;
+    code?: unknown;
+    requestID?: unknown;
+  };
+
+  return {
+    status: typeof error.status === "number" ? error.status : undefined,
+    code: typeof error.code === "string" ? error.code : undefined,
+    requestID: typeof error.requestID === "string" ? error.requestID : undefined,
+  };
+}
+
 router.post("/start", async (req, res) => {
   const { roleName, roleEn, roleLevel } = req.body as {
     roleName: string;
@@ -139,8 +155,7 @@ router.post("/start", async (req, res) => {
 
     res.json(parsed);
   } catch (err) {
-    console.log("[START] Unexpected error:", err);
-    req.log.error({ err }, "Start AI error");
+    req.log.error(getSafeErrorContext(err), "Start AI error");
     res.status(500).json({ error: "AI 推演系統暫時無法回應，請重試" });
   }
 });
@@ -209,8 +224,7 @@ router.post("/decision", async (req, res) => {
 
     res.json(parsed);
   } catch (err) {
-    console.log("[DECISION] Unexpected error:", err);
-    req.log.error({ err }, "Decision AI error");
+    req.log.error(getSafeErrorContext(err), "Decision AI error");
     res.status(500).json({ error: "AI 推演系統暫時無法回應，請重試" });
   }
 });
@@ -284,8 +298,7 @@ router.post("/evaluate", async (req, res) => {
 
     res.json(parsed);
   } catch (err) {
-    console.log("[EVALUATE] Unexpected error:", err);
-    req.log.error({ err }, "Evaluate AI error");
+    req.log.error(getSafeErrorContext(err), "Evaluate AI error");
     res.status(500).json({ error: "AI 評估系統暫時無法回應，請重試" });
   }
 });
